@@ -372,7 +372,7 @@ def github_issue_add(id, issue):
         return github_issue_add_stable(id, issue)
 
 
-def github_get(url, params={}):
+def github_get(url):
     """
     Sends GET request to GitHub or a specified URL.
 
@@ -398,14 +398,15 @@ def github_get(url, params={}):
         u = "%s/repos/%s/%s/%s" % (GITHUB_API, GITHUB_OWNER, GITHUB_REPO, url)
 
     if USE_BETA_API:
-        params = {}
         headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
             "Accept": GITHUB_BETA_APP,
-            "Authorization": "token " + GITHUB_TOKEN,
         }
     else:
-        params = {"access_token": GITHUB_TOKEN}
-        headers = {}
+        headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+        }
 
     if DEBUG:
         print("DEBUG GET: " + u)
@@ -413,7 +414,7 @@ def github_get(url, params={}):
         # print("DEBUG PARAMS: " + json.dumps(params))
         # print("DEBUG HEADERS: " + json.dumps(headers))
 
-    return requests.get(u, params=params, headers=headers)
+    return requests.get(u, headers=headers)
 
 
 def github_post(url, dict={}, fields=[]):
@@ -447,24 +448,22 @@ def github_post(url, dict={}, fields=[]):
         d[field] = dict[field]
 
     if USE_BETA_API:
-        params = {}
         headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
             "Accept": GITHUB_BETA_APP,
-            "Authorization": "token " + GITHUB_TOKEN,
         }
     else:
-        params = {"access_token": GITHUB_TOKEN}
-        headers = {}
+        headers = {
+            "Authorization": f"Bearer {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+        }
     data = json.dumps(d)
     if DEBUG:
         print("DEBUG POST: " + u)
-        # It's insecure to dump the token
-        # print("DEBUG PARAMS: " + json.dumps(params))
-        # print("DEBUG HEADERS: " + json.dumps(headers))
         print("DEBUG DATA: " + json.dumps(d))
 
     if FORCE_UPDATES:
-        return requests.post(u, params=params, headers=headers, data=data)
+        return requests.post(u, headers=headers, data=data)
     else:
         if not github_post.POST_WARNING_PRINTED:
             print("Skipping POST... (use -f to force updates)")
