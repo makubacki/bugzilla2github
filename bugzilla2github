@@ -236,9 +236,10 @@ def github_issue_update(id, issue):
         print("Error updating issue #%d on GitHub:\n%s" % (id, r.text))
         exit(1)
 
-    orig_id = issue["id"]
-    if id != orig_id:
-        github_comment_update(orig_id, id)
+    # [TianocoreUpdate] - Do not leave update coments in existing GH issues
+    # orig_id = issue["id"]
+    # if id != orig_id:
+    #     github_comment_update(orig_id, id)
 
 
 def github_issue_add_stable(id, issue):
@@ -496,8 +497,9 @@ def github_comment_update(orig_id, new_id):
                       % (comment_id, orig_id, r.text))
                 exit(1)
             return
-    print("\tno comment found on #%d, adding a new one..." % orig_id)
-    github_comment_add(orig_id, new_id)
+    # [TianocoreUpdate] - Do not leave update coments in existing GH issues
+    # print("\tno comment found on #%d, adding a new one..." % orig_id)
+    # github_comment_add(orig_id, new_id)
 
 
 def github_label_create(label):
