@@ -181,39 +181,16 @@ def github_issues_add(issues):
     id = 0
     while issues:
         id += 1
-        print("Checking GitHub issue #%d..." % id)
+        print(f"Checking if GitHub issue #{id} exists...")
         github_issue = github_issue_get(id)
         if github_issue:
-            bug_id = bug_id_parse(github_issue["body"])
-            if bug_id > 0:
-                print("\tissue #%d is the Bug %d, updating..." % (id, bug_id))
-                issue = issues.pop(bug_id, None)
-                github_issue_update(id, issue)
-            elif bug_id == 0:
-                print("\tissue #%d is a deleted Bugzilla Bug, updating...")
-                issue = new_issue(id, True)
-                github_issue_update(id, issue)
-            else:
-                print("\tissue #%d already exists on GitHub, skipping..." % id)
-                continue
+            print(f"\tissue #{id} already exists on GitHub, skipping...")
+            continue
         else:
-            # Try to add Bug id to the same #id
-            issue = issues.pop(id, None)
-            if issue:
-                print("\tadding Bugzilla Bug %d as GitHub issue #%d..."
-                      % (id, id))
-            else:
-                # Or just add a next issue
-                first_id = sorted(issues)[0]
-                if first_id > id:
-                    # We are not there yet, just add a dummy
-                    print("\tadding a dummy (deleted) bug as #%d..." % id)
-                    issue = new_issue(id, True)
-                else:
-                    # Otherwise, just add postponed issue
-                    print("\trenumbering Bugzilla Bug %d to GitHub issue #%d..."
-                          % (first_id, id))
-                    issue = issues.pop(first_id)
+            first_id = sorted(issues)[0]
+
+            print(f"\tCreating Bugzilla Bug {first_id} as GitHub issue #{id}...")
+            issue = issues.pop(first_id)
             # Note: appending an issue does not guarantee it will become #id
             github_issue_add(id, issue)
 
