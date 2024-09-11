@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE bugzilla SYSTEM "https://bugzilla.tianocore.org/page.cgi?id=bugzilla.dtd">
+
+<bugzilla version="5.0.4"
+  urlbase="https://bugzilla.tianocore.org/"
+  maintainer="john.mathews@intel.com">
+
+  <bug>
+    <bug_id>4560</bug_id>
+
+    <creation_ts>2023-09-25 00:00:16 +0000</creation_ts>
+    <short_desc>[Xhci] Skip size round up for TRB when getting PCI device/host memory address</short_desc>
+    <delta_ts>2023-10-26 17:21:08 +0000</delta_ts>
+    <reporter_accessible>1</reporter_accessible>
+    <cclist_accessible>1</cclist_accessible>
+    <classification_id>1</classification_id>
+    <classification>Unclassified</classification>
+    <product>EDK2</product>
+    <component>Code</component>
+    <version>Current</version>
+    <rep_platform>All</rep_platform>
+    <op_sys>All</op_sys>
+    <bug_status>RESOLVED</bug_status>
+    <resolution>FIXED</resolution>
+
+
+    <bug_file_loc></bug_file_loc>
+    <status_whiteboard></status_whiteboard>
+    <keywords></keywords>
+    <priority>Highest</priority>
+    <bug_severity>critical</bug_severity>
+    <target_milestone>---</target_milestone>
+
+
+    <everconfirmed>1</everconfirmed>
+    <reporter name="Michael Kubacki">michael.kubacki</reporter>
+    <assigned_to name="Michael Kubacki">michael.kubacki</assigned_to>
+    <cc>edk2+bugs+int+994+563148131503455288</cc>
+
+    <cc>michael.kubacki</cc>
+
+    <cf_industrystandardspecifications>---</cf_industrystandardspecifications>
+    <cf_branch></cf_branch>
+    <cf_release_observed>EDK II Master</cf_release_observed>
+    <cf_target_os>---</cf_target_os>
+    <cf_package>MdeModulePkg</cf_package>
+    <cf_releases_to_fix>EDK II Master</cf_releases_to_fix>
+
+
+    <comment_sort_order>oldest_to_newest</comment_sort_order>
+    <long_desc isprivate="0">
+      <commentid>21932</commentid>
+      <comment_count>0</comment_count>
+      <who name="Sean Brogan">sean.brogan</who>
+      <bug_when>2023-09-25 00:00:16 +0000</bug_when>
+      <thetext>In edk2 XHCI driver, there are two functions - UsbHcGetHostAddrForPciAddr() and
+        UsbHcGetPciAddrForHostAddr() to perform address translations between PCI device and host
+        memory addresses. Before the address translation, both functions will: 1.Roundup the input
+        size to be 64B-aligned 2.Check if the memory range specified by the input address and the
+        aligned size exceeds any XHCI memory block (in 64KB) 3.If so, a DXE_ASSERT error is
+        generated. However, when it comes to a TRB (regardless of Command/Event/Transfer TRB), its
+        size is 16B and no need to be aligned to 64B. As we observed, forcing it to be 64B in this
+        case will result in unwanted DXE_ASSER in step 3. So we propose to add one more input
+        parameter of BOOLEAN data type to UsbHcGetHostAddrForPciAddr() and
+        UsbHcGetPciAddrForHostAddr() to indicate if 64B size alignment and roundup is needed. For
+        the TRB case, we need to set it to FALSE. For other cases, we can keep it as TRUE.</thetext>
+    </long_desc>
+    <long_desc isprivate="0">
+      <commentid>21933</commentid>
+      <comment_count>1</comment_count>
+      <who name="Michael Kubacki">michael.kubacki</who>
+      <bug_when>2023-09-25 02:51:41 +0000</bug_when>
+      <thetext>The issue is assigned to my own and confirmed.</thetext>
+    </long_desc>
+    <long_desc isprivate="0">
+      <commentid>21936</commentid>
+      <comment_count>2</comment_count>
+      <who name="Michael Kubacki">michael.kubacki</who>
+      <bug_when>2023-09-25 22:31:54 +0000</bug_when>
+      <thetext>Already submitted the patch to edk2 for code review.</thetext>
+    </long_desc>
+    <long_desc isprivate="0">
+      <commentid>22080</commentid>
+      <comment_count>3</comment_count>
+      <who name="Michael Kubacki">michael.kubacki</who>
+      <bug_when>2023-10-26 17:21:08 +0000</bug_when>
+      <thetext>Fixed in commit f36e1ec1f0a5fd3be84913e09181d7813444b620.</thetext>
+    </long_desc>
+  </bug>
+
+</bugzilla>

@@ -81,8 +81,8 @@ GITHUB_TOKEN = ""
 # Global convertion dictionaries
 EMAIL2LOGIN = {
     "__name__": "email to GitHub login",
-    "123@example.com": "login",
-    "email@example.org": "berestovskyy",
+    "michael.kubacki": "makubacki",
+    "sean.brogan": "spbrogan",
 }
 STATUS2STATE = {
     "__name__": "status to GitHub state (stable APIv3)",
