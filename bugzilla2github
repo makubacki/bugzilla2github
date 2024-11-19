@@ -49,34 +49,39 @@ if sys.version[0] == '2':
     reload(sys)
     sys.setdefaultencoding('utf-8')
 
+# Script name, i.e. bugzilla2github
+NAME = os.path.basename(__file__)
+
 ########################################################################
-## Global variables
+# Global variables
 ########################################################################
 
 # By default use stable GitHub APIv3.
 # Use -b command line argument for GitHub beta import API.
 USE_BETA_API = False
+
 # Beta import API application
 GITHUB_BETA_APP = "application/vnd.github.golden-comet-preview+json"
-# Script name, i.e. bugzilla2github
-NAME = os.path.basename(__file__)
+
 # This signature is used to detect if the bug was imported from Bugzilla
 # The signature follows with the bug id, i.e. an integer number.
 BUG_SIGNATURE = "Bugzilla Bug "
+
 DELETED_BUG_SIGNATURE = "Deleted Bugzilla Bug"
+
 # Do the actual changes, i.e. post to GitHub
 FORCE_UPDATES = False
-# Print some debug info
-DEBUG = False
-# Default XML file with Bugzilla export
-XML_FILE = "export.xml"
+
 # GitHub REST API URL
 # See https://developer.github.com/v3/issues/
 GITHUB_API = "https://api.github.com"
+
 # GitHub repository owner, i.e. username
 GITHUB_OWNER = ""
+
 # GitHub repository name
 GITHUB_REPO = ""
+
 # GitHub access token
 GITHUB_TOKEN = ""
 
@@ -388,11 +393,10 @@ def github_get(url):
             "Accept": "application/vnd.github.v3+json",
         }
 
-    if DEBUG:
-        logging.debug("DEBUG GET: " + u)
-        # It's insecure to dump the token
-        # logging.debug("DEBUG PARAMS: " + json.dumps(params))
-        # logging.debug("DEBUG HEADERS: " + json.dumps(headers))
+    logging.debug("DEBUG GET: " + u)
+    # It's insecure to dump the token
+    # logging.debug("DEBUG PARAMS: " + json.dumps(params))
+    # logging.debug("DEBUG HEADERS: " + json.dumps(headers))
 
     return requests.get(u, headers=headers)
 
@@ -438,9 +442,8 @@ def github_post(url, dict={}, fields=[]):
             "Accept": "application/vnd.github.v3+json",
         }
     data = json.dumps(d)
-    if DEBUG:
-        logging.debug("DEBUG POST: " + u)
-        logging.debug("DEBUG DATA: " + json.dumps(d))
+    logging.debug("DEBUG POST: " + u)
+    logging.debug("DEBUG DATA: " + json.dumps(d))
 
     if FORCE_UPDATES:
         return requests.post(u, headers=headers, data=data)
@@ -579,35 +582,29 @@ def XML2bug(parent):
     """
     issue = {}
 
-    if DEBUG:
-        logging.debug("DEBUG XML:")
+    logging.debug("DEBUG XML:")
     for key in parent:
         if len(key) > 0:
-            if DEBUG:
-                print("\t> %s" % key.tag)
+            logging.debug("\t> %s" % key.tag)
             val = XML2bug(key)
         else:
             val = key.text
         if key.text:
             if key.tag not in issue:
                 issue[key.tag] = val
-                if DEBUG:
-                    logging.debug("\tissue['%s'] = '%s'" % (key.tag, val))
+                logging.debug("\tissue['%s'] = '%s'" % (key.tag, val))
             else:
                 if isinstance(issue[key.tag], list):
                     issue[key.tag].append(val)
-                    if DEBUG:
-                        logging.debug("\tissue['%s'].append('%s')" % (key.tag, val))
+                    logging.debug("\tissue['%s'].append('%s')" % (key.tag, val))
                 else:
                     issue[key.tag] = [issue[key.tag], val]
-                    if DEBUG:
-                        logging.debug("\tissue['%s'] = [issue['%s'], '%s']" %
+                    logging.debug("\tissue['%s'] = [issue['%s'], '%s']" %
                               (key.tag, key.tag, val))
         # Parse attributes
         for name, val in key.items():
             issue["%s.%s" % (key.tag, name)] = val
-            if DEBUG:
-                logging.debug("\tissue['%s.%s'] = '%s'" % (key.tag, name, val))
+            logging.debug("\tissue['%s.%s'] = '%s'" % (key.tag, name, val))
 
     return issue
 
@@ -909,8 +906,8 @@ def bugs2dict(xml_root):
         # Check for duplicates
         id = issue["id"]
         if id in issues:
-            logging.error("Error checking duplicates: #%d is duplicated in '%s'"
-                  % (id, XML_FILE))
+            logging.error(f"Error checking duplicates: #{id} is duplicated "
+                          f"in the XML file.")
         issues[id] = issue
 
     return issues
@@ -1039,84 +1036,89 @@ def usage():
     exit(1)
 
 
-def args_parse(argv):
+def parse_args() -> int:
     """
     Parses command line options and sets global variables accordingly.
+
+    Returns:
+        int: The system exit code value.
     """
-    global FORCE_UPDATES, DEBUG, USE_BETA_API
-    global XML_FILE, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN
+    global FORCE_UPDATES, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, USE_BETA_API
 
-    try:
-        opts, args = getopt.getopt(argv, "ehfdo:r:t:x:")
-    except getopt.GetoptError:
-        usage()
-    for opt, arg in opts:
-        if opt == '-e':
-            print(
-                "WARNING: Using GitHub beta import API. "
-                "Please report issues here:\n"
-                "\t https://github.com/berestovskyy/bugzilla2github/issues")
-            USE_BETA_API = True
-        if opt == '-h':
-            usage()
-        elif opt == "-f":
-            print(
-                "WARNING: The repo will be UPDATED! No backups, no undos!\n"
-                "Press Ctrl+C within next 5 seconds to cancel the update:")
-            time.sleep(5)
-            FORCE_UPDATES = True
-        elif opt == "-d":
-            DEBUG = True
-        elif opt == "-o":
-            GITHUB_OWNER = arg
-        elif opt == "-r":
-            GITHUB_REPO = arg
-        elif opt == "-t":
-            GITHUB_TOKEN = arg
-        elif opt == "-x":
-            XML_FILE = arg
+    import argparse
+    from argparse import RawTextHelpFormatter
 
-    # Check the arguments
-    if (not XML_FILE or not GITHUB_OWNER or not GITHUB_REPO or
-            not GITHUB_TOKEN):
-        print("Error parsing arguments: "
-              "please specify XML file, GitHub owner, repo and token")
-        print()
-        usage()
+    parser = argparse.ArgumentParser(
+                        prog=NAME,
+                        description=(
+                            "Bugzilla XML export file to GitHub Issues Converter."),
+                        formatter_class=RawTextHelpFormatter)
 
+    parser.add_argument('-b', '--beta',
+                        action='store_true',
+                        help="By default use stable GitHub APIv3. This uses "
+                             "the GitHub beta import API.")
+    parser.add_argument('-f', '--force',
+                        action='store_true',
+                        help="Force updates (actually post the changes to GitHub).")
+    parser.add_argument('-d', '--debug',
+                        action='store_true',
+                        help="Print debug information.")
+    parser.add_argument('-x', '--xml',
+                        type=str,
+                        default="export.xml",
+                        help="Source XML file.")
+    parser.add_argument('-o', '--owner',
+                        required=True,
+                        type=str,
+                        help="GitHub owner.")
+    parser.add_argument('-r', '--repo',
+                        required=True,
+                        type=str,
+                        help="GitHub repository.")
+    parser.add_argument('-t', '--token',
+                        required=True,
+                        type=str,
+                        help="GitHub access token.")
 
-def init_logging():
-    """
-    Initializes logging.
-    """
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
+    args = parser.parse_args()
 
-    stdout_logger_handler = logging.StreamHandler(sys.stdout)
-    stdout_logger_handler.set_name('stdout_logger_handler')
-    stdout_logger_handler.setLevel(logging.INFO)
-    stdout_logger_handler.setFormatter(logging.Formatter('%(message)s'))
-    root_logger.addHandler(stdout_logger_handler)
+    if args.beta:
+        logging.warning(
+            "Using GitHub beta import API. "
+            "Please report issues here:\n"
+            "\thttps://github.com/berestovskyy/bugzilla2github/issues"
+        )
+        USE_BETA_API = True
 
+    if args.force:
+        logging.warning(
+            "WARNING: The repo will be UPDATED! No backups, no undos!\n"
+            "Press Ctrl+C within next 5 seconds to cancel the update:"
+        )
+        time.sleep(5)
+        FORCE_UPDATES = True
 
-def main(argv):
-    """
-    Steps to convert Bugzilla exported bugs and post them on GitHub.
-    """
-    init_logging()
+    if args.debug:
+        logging.info("Debug information enabled")
+        std_out_logger = logging.getLogger('stdout_logger_handler')
+        std_out_logger.setLevel(logging.DEBUG)
 
-    args_parse(argv)
+    GITHUB_OWNER = args.owner
+    GITHUB_REPO = args.repo
+    GITHUB_TOKEN = args.token
+
     logging.info("===> Converting Bugzilla Bugs to GitHub Issues...")
-    logging.info("\tSource XML file:          %s" % XML_FILE)
-    logging.info("\tDestination GitHub owner: %s" % GITHUB_OWNER)
-    logging.info("\tDestination GitHub repo:  %s" % GITHUB_REPO)
-    if DEBUG:
+    logging.info(f"\tSource XML file:          {args.xml}")
+    logging.info(f"\tDestination GitHub owner: {args.owner}")
+    logging.info(f"\tDestination GitHub repo:  {args.repo}")
+    if args.debug:
         logging.info("\tDebug information:        on")
-    if USE_BETA_API:
+    if args.beta:
         logging.info("\tUsing beta import API:    on")
 
     parser = lxml.etree.XMLParser(recover=True)
-    xml_tree = xml.etree.ElementTree.parse(XML_FILE, parser=parser)
+    xml_tree = xml.etree.ElementTree.parse(args.xml, parser=parser)
     xml_root = xml_tree.getroot()
     issues = bugs2dict(xml_root)
 
@@ -1130,5 +1132,28 @@ def main(argv):
     logging.info("===> All done.")
 
 
+def init_logging():
+    """
+    Initializes logging.
+    """
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+
+    stdout_logger_handler = logging.StreamHandler(sys.stdout)
+    stdout_logger_handler.set_name('stdout_logger_handler')
+    stdout_logger_handler.setLevel(logging.INFO)
+    stdout_logger_handler.setFormatter(logging.Formatter('%(message)s'))
+    root_logger.addHandler(stdout_logger_handler)
+
+
+def main():
+    """
+    Steps to convert Bugzilla exported bugs and post them on GitHub.
+    """
+    init_logging()
+
+    parse_args()
+
+
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
