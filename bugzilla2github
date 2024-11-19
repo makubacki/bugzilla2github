@@ -32,17 +32,16 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import json
-import getopt
 import os
 import logging
 import re
 import lxml.etree
 import requests
 import sys
-import datetime
 import time
 import lxml
 import xml.etree.ElementTree
+from datetime import datetime, timezone
 from six.moves import range
 from pathlib import Path
 
@@ -938,8 +937,7 @@ def new_issue(id, dummy):
     issue["comments"] = []
     issue["id"] = int(id)
     issue["title"] = DELETED_BUG_SIGNATURE
-    issue["created_at"] = datetime.datetime.utcnow().replace(
-        microsecond=0).isoformat() + "Z"
+    issue["created_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     issue["updated_at"] = issue["created_at"]
     issue["state"] = "closed"
     if USE_BETA_API:
@@ -1141,14 +1139,14 @@ def convert_issues_in_xml(xml_file: Path):
     xml_root = xml_tree.getroot()
     issues = bugs2dict(xml_root)
 
-    logging.info("===> Checking if all the labels exist on GitHub...")
-    github_labels_create(issues)
-    logging.info("===> Checking if all the assignees exist on GitHub...")
-    github_assignees_check(issues)
+    # logging.info("===> Checking if all the labels exist on GitHub...")
+    # github_labels_create(issues)
+    # logging.info("===> Checking if all the assignees exist on GitHub...")
+    # github_assignees_check(issues)
 
-    logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
-    github_issues_add(issues)
-    logging.info("===> All done.")
+    # logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
+    # github_issues_add(issues)
+    # logging.info("===> All done.")
 
 
 def main():
