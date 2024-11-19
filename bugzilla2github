@@ -36,10 +36,12 @@ import getopt
 import os
 import pprint
 import re
+import lxml.etree
 import requests
 import sys
 import datetime
 import time
+import lxml
 import xml.etree.ElementTree
 from six.moves import range
 
@@ -78,7 +80,7 @@ GITHUB_REPO = ""
 # GitHub access token
 GITHUB_TOKEN = ""
 
-# Global convertion dictionaries
+# Global conversion dictionaries
 EMAIL2LOGIN = {
     "__name__": "email to GitHub login",
     "michael.kubacki": "makubacki",
@@ -305,7 +307,7 @@ def github_issue_add_beta(id, issue):
         # .../ISSUE_NUMBER so it's easy to get the issue number,
         # to check that it is what was expected.
         result = re.match("https://api.github.com/repos/" + GITHUB_OWNER +
-                          "/" + GITHUB_REPO + "/issues/(\d+)",
+                          "/" + GITHUB_REPO + "/issues/(\\d+)",
                           r.json()["issue_url"])
         if not result:
             print("Error while parsing issue number:\n%s" %
@@ -733,16 +735,21 @@ def comment2dict(comment, attachments):
         "",
     ])
     # Convert attachments if any
-    if "attachid" in comment:
-        body.extend([
-            attachments.pop(comment.pop("attachid")),
-            ""
-        ])
-    body.append("")
+    try:
+        if "attachid" in comment:
+            body.extend([
+                attachments.pop(comment.pop("attachid")),
+                ""
+            ])
+        body.append("")
+    except KeyError:
+        print("Failed to convert attachment")
 
     # Syntax: convert "bug id" to "bug #id"
     for i, val in enumerate(body):
-        body[i] = re.sub(r"(?i)(bug)\s+([0-9]+)", r"\1 #\2", val)
+        if isinstance(val, dict):
+            body[i] = str(val)
+            body[i] = re.sub(r"(?i)(bug)\s+([0-9]+)", r"\1 #\2", str(val))
 
     # Ignore some comment fields
     fields_ignore(comment, COMMENT_UNUSED_FIELDS)
@@ -1032,7 +1039,7 @@ def usage():
     exit(1)
 
 
-def args_parse(argv):
+def parse_args(argv):
     """
     Parses command line options and sets global variables accordingly.
     """
@@ -1092,7 +1099,8 @@ def main(argv):
     if USE_BETA_API:
         print("\tUsing beta import API:    on")
 
-    xml_tree = xml.etree.ElementTree.parse(XML_FILE)
+    parser = lxml.etree.XMLParser(recover=True)
+    xml_tree = xml.etree.ElementTree.parse(XML_FILE, parser=parser)
     xml_root = xml_tree.getroot()
     issues = bugs2dict(xml_root)
 
