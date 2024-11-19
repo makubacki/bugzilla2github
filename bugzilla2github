@@ -44,6 +44,7 @@ import time
 import lxml
 import xml.etree.ElementTree
 from six.moves import range
+from pathlib import Path
 
 if sys.version[0] == '2':
     reload(sys)
@@ -1036,12 +1037,12 @@ def usage():
     exit(1)
 
 
-def parse_args() -> int:
+def parse_args() -> str:
     """
     Parses command line options and sets global variables accordingly.
 
     Returns:
-        int: The system exit code value.
+        str: The XML file path to parse.
     """
     global FORCE_UPDATES, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, USE_BETA_API
 
@@ -1117,19 +1118,7 @@ def parse_args() -> int:
     if args.beta:
         logging.info("\tUsing beta import API:    on")
 
-    parser = lxml.etree.XMLParser(recover=True)
-    xml_tree = xml.etree.ElementTree.parse(args.xml, parser=parser)
-    xml_root = xml_tree.getroot()
-    issues = bugs2dict(xml_root)
-
-    logging.info("===> Checking if all the labels exist on GitHub...")
-    github_labels_create(issues)
-    logging.info("===> Checking if all the assignees exist on GitHub...")
-    github_assignees_check(issues)
-
-    logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
-    github_issues_add(issues)
-    logging.info("===> All done.")
+    return args.xml
 
 
 def init_logging():
@@ -1146,13 +1135,29 @@ def init_logging():
     root_logger.addHandler(stdout_logger_handler)
 
 
+def convert_issues_in_xml(xml_file: Path):
+    parser = lxml.etree.XMLParser(recover=True)
+    xml_tree = xml.etree.ElementTree.parse(xml_file, parser=parser)
+    xml_root = xml_tree.getroot()
+    issues = bugs2dict(xml_root)
+
+    logging.info("===> Checking if all the labels exist on GitHub...")
+    github_labels_create(issues)
+    logging.info("===> Checking if all the assignees exist on GitHub...")
+    github_assignees_check(issues)
+
+    logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
+    github_issues_add(issues)
+    logging.info("===> All done.")
+
+
 def main():
     """
     Steps to convert Bugzilla exported bugs and post them on GitHub.
     """
     init_logging()
-
-    parse_args()
+    xml_file_path = parse_args()
+    convert_issues_in_xml(Path(xml_file_path))
 
 
 if __name__ == "__main__":
