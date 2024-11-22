@@ -31,6 +31,8 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
+import base64
+import bugzilla
 import json
 import os
 import logging
@@ -252,6 +254,7 @@ def github_issue_update(id, issue):
 def github_issue_add_stable(id, issue):
     # Note: this still does not guarantee the new issue will be added as #id
     r = github_post("issues", issue, ["title", "body", "labels", "assignees"])
+
     if not r:
         logging.error("Error adding a new issue on GitHub:\n%s" % r.text)
         exit(1)
@@ -734,8 +737,10 @@ def comment2dict(comment, attachments):
     # Convert attachments if any
     try:
         if "attachid" in comment:
+            # Replace with link to the attachment on a git repo if repo approach
+            # is used. Location is known by attachment ID.
             body.extend([
-                attachments.pop(comment.pop("attachid")),
+                f"Attachment: {comment['attachid']}",
                 ""
             ])
         body.append("")
@@ -779,6 +784,43 @@ def comments2list(comments, attachments):
     return issue
 
 
+def download_attachment(attachment_info):
+    """
+    Downloads attachment from Bugzilla and saves it to a file.
+
+    Args:
+        attachment: A dictionary with attachment information.
+    """
+    # Save the attachment to a file
+    attachment_dir = Path("attachments") / str(attachment_info['attachid'])
+    attachment_dir.mkdir(parents=True, exist_ok=True)
+    attachment_file = attachment_dir / attachment_info['filename']
+
+    if attachment_file.exists():
+        logging.debug(f"Attachment {attachment_info['attachid']} already exists")
+        # logging.info(f"Attachment {attachment_info['attachid']} already exists")
+        return
+
+    bz = bugzilla.Bugzilla("https://bugzilla.tianocore.org/rest",
+                           api_key="APIKEY")
+
+    a = bz.get_attachment(attachment_info['attachid'])
+    if len(a) == 0:
+        logging.error(f"Failed to download attachment {attachment_info['attachid']}")
+        return
+
+    a = a['attachments'][f"{attachment_info['attachid']}"]
+    logging.info(f"Attachment for Bug {a['bug_id']} (ID = {a['id']})")
+    logging.info(f"  File Name: {a['file_name']}")
+    logging.info(f"  Summary: {a['summary']}")
+    logging.info(f"  Creator: {a['creator']}")
+    logging.info(f"  Size: {a['size']}")
+    logging.info(f"  Obsolete: {"True" if a['is_obsolete'] != 0 else "False"}")
+
+    with open(attachment_file, 'wb') as f:
+        f.write(base64.b64decode(a['data']))
+
+
 def bug2issue(bug):
     """
     Converts all Bugzilla report fields to a new issue dictionary.
@@ -792,11 +834,19 @@ def bug2issue(bug):
         A new issue dictionary.
     """
     issue = new_issue(bug.pop("bug_id"), False)
-    attachments = {}
 
     # Convert attachments if any
+    attachments = []
     if "attachment" in bug:
-        attachments = attachments2dict(bug.pop("attachment"))
+        if isinstance(bug["attachment"], list):
+            for attachment in bug["attachment"]:
+                download_attachment(attachment)
+                attachments.append(attachment["attachid"])
+        else:
+            download_attachment(bug["attachment"])
+            attachments.append(bug["attachment"]["attachid"])
+    issue["attachments"] = attachments
+
     # Convert long_desc and attachment to comments
     issue["comments"].extend(comments2list(bug.pop("long_desc"), attachments))
     # Convert short_desc to title
@@ -1139,14 +1189,14 @@ def convert_issues_in_xml(xml_file: Path):
     xml_root = xml_tree.getroot()
     issues = bugs2dict(xml_root)
 
-    # logging.info("===> Checking if all the labels exist on GitHub...")
-    # github_labels_create(issues)
-    # logging.info("===> Checking if all the assignees exist on GitHub...")
-    # github_assignees_check(issues)
+    logging.info("===> Checking if all the labels exist on GitHub...")
+    github_labels_create(issues)
+    logging.info("===> Checking if all the assignees exist on GitHub...")
+    github_assignees_check(issues)
 
-    # logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
-    # github_issues_add(issues)
-    # logging.info("===> All done.")
+    logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
+    github_issues_add(issues)
+    logging.info("===> All done.")
 
 
 def main():
