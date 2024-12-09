@@ -706,13 +706,13 @@ def attachments2dict(attachments):
 
 
 def bugzilladate2githubdate(date):
-	    result = re.match(
-	        r'(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d) \+(\d\d)(\d\d)', date)
-	    if not result:
-	        logging.error("Date %s was not converted!" % date)
-	        exit(1)
-	    return "{a}T{b}+{c}:{d}".format(a=result.group(1), b=result.group(2),
-	                                    c=result.group(3), d=result.group(4))
+    result = re.match(
+        r'(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d) \+(\d\d)(\d\d)', date)
+    if not result:
+        logging.error("Date %s was not converted!" % date)
+        exit(1)
+    return "{a}T{b}+{c}:{d}".format(a=result.group(1), b=result.group(2),
+                                    c=result.group(3), d=result.group(4))
 
 
 def comment2dict(comment, attachments):
