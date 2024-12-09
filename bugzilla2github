@@ -858,7 +858,7 @@ def bugzilladate2githubdate(date):
 
 
 def get_attachment_url(org_name, repo_name, attachment_id, attachment_filename):
-    return f"https://github.com/tianocore/user-attachments/blob/main/{org_name}/{repo_name}/BZ-{attachment_id}-{attachment_filename}"
+    return f"https://github.com/tianocore/user-attachments/raw/refs/heads/main/{org_name}/{repo_name}/BZ-{attachment_id}-{attachment_filename}"
 
 
 def comment2dict(comment, attachments, issue):
