@@ -37,11 +37,9 @@ import json
 import os
 import logging
 import re
-import lxml.etree
 import requests
 import sys
 import time
-import lxml
 import xml.etree.ElementTree
 from datetime import datetime, timezone
 from six.moves import range
@@ -1183,9 +1181,17 @@ def init_logging():
     root_logger.addHandler(stdout_logger_handler)
 
 
+def escape_tags(content):
+    return re.sub(r'(<thetext>)(.*?)(</thetext>)',
+                  lambda m: f"{m.group(1)}<![CDATA[{m.group(2)}]]>{m.group(3)}",
+                  content, flags=re.DOTALL)
+
+
 def convert_issues_in_xml(xml_file: Path):
-    parser = lxml.etree.XMLParser(recover=True)
-    xml_tree = xml.etree.ElementTree.parse(xml_file, parser=parser)
+    with open(xml_file, 'r', encoding='utf-8') as file:
+        xml_content = file.read()
+
+    xml_tree = xml.etree.ElementTree.ElementTree(xml.etree.ElementTree.fromstring(escape_tags(xml_content)))
     xml_root = xml_tree.getroot()
     issues = bugs2dict(xml_root)
 
