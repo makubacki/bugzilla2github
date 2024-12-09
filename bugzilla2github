@@ -715,7 +715,11 @@ def bugzilladate2githubdate(date):
                                     c=result.group(3), d=result.group(4))
 
 
-def comment2dict(comment, attachments):
+def get_attachment_url(org_name, repo_name, attachment_id, attachment_filename):
+    return f"https://github.com/tianocore/user-attachments/blob/main/{org_name}/{repo_name}/BZ-{attachment_id}-{attachment_filename}"
+
+
+def comment2dict(comment, attachments, issue):
     """
     Converts Bugzilla comment to a string (stable APIv3)
     or a dictionary (beta import API).
@@ -735,12 +739,16 @@ def comment2dict(comment, attachments):
     # Convert attachments if any
     try:
         if "attachid" in comment:
-            # Replace with link to the attachment on a git repo if repo approach
-            # is used. Location is known by attachment ID.
-            body.extend([
-                f"Attachment: {comment['attachid']}",
-                ""
-            ])
+            attach_id = comment.pop("attachid")
+            attachment = next((a for a in attachments if a.get('attachid') == attach_id), None)
+            if attachment:
+                body.extend([
+                    f"Attachment: [{attachment['filename']}]("
+                    f"{get_attachment_url(issue['org'], issue['repo'], attach_id, attachment['filename'])})",
+                    ""
+                ])
+            else:
+                logging.error("Failed to convert attachment")
         body.append("")
     except KeyError:
         logging.error("Failed to convert attachment")
@@ -767,22 +775,22 @@ def comment2dict(comment, attachments):
         return "\n".join(body)
 
 
-def comments2list(comments, attachments):
+def comments2list(comments, attachments, issue):
     """
     Converts Bugzilla comments to a list of
     strings (stable APIv3) or dictionaries (beta import API).
     """
-    issue = []
+    comments_out = []
     if isinstance(comments, list):
         for comment in comments:
-            issue.append(comment2dict(comment, attachments))
+            comments_out.append(comment2dict(comment, attachments, issue))
     else:
-        issue.append(comment2dict(comments, attachments))
+        comments_out.append(comment2dict(comments, attachments, issue))
 
-    return issue
+    return comments_out
 
 
-def download_attachment(attachment_info):
+def download_attachment(attachment_info, org, repo):
     """
     Downloads attachment from Bugzilla and saves it to a file.
 
@@ -790,9 +798,9 @@ def download_attachment(attachment_info):
         attachment: A dictionary with attachment information.
     """
     # Save the attachment to a file
-    attachment_dir = Path("attachments") / str(attachment_info['attachid'])
+    attachment_dir = Path("user-attachments") / org / repo
     attachment_dir.mkdir(parents=True, exist_ok=True)
-    attachment_file = attachment_dir / attachment_info['filename']
+    attachment_file = attachment_dir / f"BZ-{attachment_info['attachid']}-{attachment_info['filename']}"
 
     if attachment_file.exists():
         logging.debug(f"Attachment {attachment_info['attachid']} already exists")
@@ -836,20 +844,6 @@ def bug2issue(bug):
     component = bug.pop("component")
     product = bug.pop("product")
 
-    # Convert attachments if any
-    attachments = []
-    if "attachment" in bug:
-        if isinstance(bug["attachment"], list):
-            for attachment in bug["attachment"]:
-                download_attachment(attachment)
-                attachments.append(attachment["attachid"])
-        else:
-            download_attachment(bug["attachment"])
-            attachments.append(bug["attachment"]["attachid"])
-    issue["attachments"] = attachments
-
-    # Convert long_desc and attachment to comments
-    issue["comments"].extend(comments2list(bug.pop("long_desc"), attachments))
     # Convert short_desc to title
     issue["title"] = ("%s (" % bug.pop("short_desc") + BUG_SIGNATURE
                       + "%d)" % issue["id"])
@@ -956,6 +950,22 @@ def bug2issue(bug):
         logging.critical("Security issues should not be present. "
                          "A security issue is being skipped.")
 
+    # Convert attachments if any
+    attachments = []
+    if "attachment" in bug:
+        if isinstance(bug["attachment"], list):
+            for attachment in bug["attachment"]:
+                download_attachment(attachment, issue["org"], issue["repo"])
+                attachments.append(attachment)
+        else:
+            download_attachment(bug["attachment"], issue["org"], issue["repo"])
+            attachments.append(bug["attachment"])
+    issue["attachments"] = attachments
+    bug.pop("attachment", None)
+
+    # Convert long_desc and attachment to comments
+    issue["comments"].extend(comments2list(bug.pop("long_desc"), attachments, issue))
+
     logging.info(f"Bugzilla Bug #{issue['id']} (\"{issue['title']}\") mapped to {issue['org']}/{issue['repo']}")
 
     # Ignore some bug fields
@@ -965,10 +975,6 @@ def bug2issue(bug):
     if bug:
         logging.warning("WARNING: unconverted bug fields:")
         fields_dump(bug)
-    # Make sure we have converted all the attachments
-    if attachments:
-        logging.warning("WARNING: unused attachments:")
-        fields_dump(attachments)
 
     return issue
 
