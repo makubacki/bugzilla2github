@@ -551,9 +551,6 @@ def github_get(url):
         }
 
     logging.debug("DEBUG GET: " + u)
-    # It's insecure to dump the token
-    # logging.debug("DEBUG PARAMS: " + json.dumps(params))
-    # logging.debug("DEBUG HEADERS: " + json.dumps(headers))
 
     return requests.get(u, headers=headers)
 
@@ -613,23 +610,6 @@ def github_post(url, dict={}, fields=[]):
 
 # A flag if the post warning has been printed
 github_post.POST_WARNING_PRINTED = False
-
-
-def github_comment_add(orig_id, new_id):
-    """
-    Adds a comment to Github #orig_id that Bugzilla Bug is now at #new_id.
-
-    Args:
-        orig_id: Original Bugzilla Bug id.
-        new_id: Newly assigned GitHub Issue #id.
-    """
-    logging.info("\tadding a comment to issue #%d on GitHub..." % orig_id)
-    comment = new_renumber_comment(orig_id, new_id)
-    r = github_post("issues/%d/comments" % orig_id, comment, ["body"])
-    if not r:
-        logging.error("Error adding new comment to issue #%d on GitHub:\n%s"
-              % (orig_id, r.text))
-        exit(1)
 
 
 def github_label_create(label):
