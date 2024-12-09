@@ -777,9 +777,9 @@ def str2list(map, str):
     return map[str]
 
 
-def package_to_label(package):
+def package_to_label(*packages):
     """Converts Bugzilla package to a of GitHub label."""
-    return f"package:{package.strip().lower()}"
+    return [f"package:{p.strip().lower()}" for p in packages]
 
 
 def ids2ids(ids):
@@ -1073,7 +1073,10 @@ def bug2issue(bug):
 
     # Convert package to labels
     if issue["package"]:
-        issue["labels"].append(package_to_label(issue["package"]))
+        if isinstance(issue["package"], list):
+            issue["labels"].extend(package_to_label(*issue["package"]))
+        else:
+            issue["labels"].extend(package_to_label(issue["package"]))
 
     # Convert severity to labels
     issue["labels"].extend(str2list(SEVERITY2LABELS, bug.pop("bug_severity")))
