@@ -85,6 +85,9 @@ GITHUB_REPO = ""
 # GitHub access token
 GITHUB_TOKEN = ""
 
+# Bugzilla logins that were not converted to GitHub logins
+UNCONVERTED_LOGINS = set()
+
 # Global conversion dictionaries
 EMAIL2LOGIN = {
     "__name__": "email to GitHub login",
@@ -613,9 +616,12 @@ def XML2bug(parent):
 def str2list(map, str):
     """Lookups in the map specific string and returns it as a list."""
     if str not in map:
-        logging.warning("WARNING: unable to convert %s: %s" % (map["__name__"], str))
         # Suppress further reports
         map[str] = []
+        if map["__name__"] == "email to GitHub login":
+            UNCONVERTED_LOGINS.add(str)
+        else:
+            logging.warning("WARNING: unable to convert %s: %s" % (map["__name__"], str))
 
     return map[str]
 
