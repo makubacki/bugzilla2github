@@ -1421,14 +1421,14 @@ def convert_issues_in_xml(xml_file: Path):
     xml_root = xml_tree.getroot()
     issues = bugs2dict(xml_root)
 
-    logging.info("===> Checking if all the labels exist on GitHub...")
+    logging.info("\n===> Checking if all the labels exist on GitHub...")
     github_labels_create(issues)
-    logging.info("===> Checking if all the assignees exist on GitHub...")
+    logging.info("\n===> Checking if all the assignees exist on GitHub...")
     github_assignees_check(issues)
 
-    logging.info("===> Posting Bugzilla reports to GitHub Issue Tracker...")
+    logging.info("\n===> Posting Bugzilla reports to GitHub Issue Tracker...")
     github_issues_add(issues)
-    logging.info("===> All done.")
+    logging.info("\n===> All done.")
 
 
 def main():
