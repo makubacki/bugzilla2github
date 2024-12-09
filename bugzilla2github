@@ -111,36 +111,30 @@ STATE2CLOSED_BETA = {
     "open": False,
     "closed": True,
 }
-COMPONENT2LABELS = {
-    "__name__": "component to GitHub labels",
-    "Features": ["enhancement"],
-    "Testing": ["tests"],
-    "Documentation": ["docs"],
-}
 PRIORITY2LABELS = {
     "__name__": "priority to GitHub labels",
-    "Lowest": ["low priority"],
-    "Low": ["low priority"],
+    "Lowest": ["priority:low"],
+    "Low": ["priority:low"],
     "---": [],
-    "Normal": [],
-    "High": ["high priority"],
-    "Highest": ["high priority"],
+    "Normal": ["priority:medium"],
+    "High": ["priority:high"],
+    "Highest": ["priority:high"],
 }
 SEVERITY2LABELS = {
     "__name__": "severity to GitHub labels",
-    "enhancement": ["enhancement"],
-    "trivial": ["minor", "bug"],
-    "minor": ["minor", "bug"],
-    "normal": ["bug"],
-    "major": ["major", "bug"],
-    "critical": ["major", "bug"],
-    "blocker": ["major", "bug"],
+    "enhancement": ["type:feature-request"],
+    "trivial": [],
+    "minor": [],
+    "normal": [],
+    "major": ["priority:high"],
+    "critical": ["priority:high"],
+    "blocker": ["priority:high"],
 }
 RESOLUTION2LABELS = {
     "__name__": "resolution to GitHub labels",
     "FIXED": [],
-    "INVALID": ["invalid"],
-    "DUPLICATE": ["duplicate"],
+    "INVALID": ["state:invalid"],
+    "DUPLICATE": ["state:duplicate"],
 }
 BUG_UNUSED_FIELDS = [
     "actual_time",
@@ -626,6 +620,11 @@ def str2list(map, str):
     return map[str]
 
 
+def package_to_label(package):
+    """Converts Bugzilla package to a of GitHub label."""
+    return f"package:{package.strip().lower()}"
+
+
 def ids2ids(ids):
     """Converts Bugzilla bug report ids to issues #ids."""
     issue = []
@@ -859,10 +858,12 @@ def bug2issue(bug):
     # Convert assigned_to to assignees
     issue["assignees"].append(
         email2login(bug.pop("assigned_to"), bug.pop("assigned_to.name", None)))
-    # Convert component to labels
-    issue["labels"].extend(str2list(COMPONENT2LABELS, bug.pop("component")))
+
+    issue["package"] = bug.pop("cf_package", None)
+
     # Convert bug_status to state
     issue["state"] = str2list(STATUS2STATE, bug.pop("bug_status"))
+
     if USE_BETA_API:
         # Convert creation_ts to created_at
         issue["created_at"] = bugzilladate2githubdate(bug.pop("creation_ts"))
@@ -881,12 +882,27 @@ def bug2issue(bug):
 
     # Convert priority to labels
     issue["labels"].extend(str2list(PRIORITY2LABELS, bug.pop("priority")))
+
+    # Convert package to labels
+    if issue["package"]:
+        issue["labels"].append(package_to_label(issue["package"]))
+
     # Convert severity to labels
     issue["labels"].extend(str2list(SEVERITY2LABELS, bug.pop("bug_severity")))
+
     # Convert resolution to labels
     if "resolution" in bug:
         issue["labels"].extend(
             str2list(RESOLUTION2LABELS, bug.pop("resolution")))
+
+    # Set issue type if known
+    if product == "Tianocore Feature Requests":
+        issue["labels"].append("type:feature-request")
+    if component == "Specification Update":
+        issue["labels"].append("type:documentation-request")
+
+    if "type:feature-request" not in issue["labels"] and "type:documentation-request" not in issue["labels"]:
+        issue["labels"].append("type:bug")
 
     # Create the bug description
     body = []
@@ -898,6 +914,7 @@ def bug2issue(bug):
     ])
     if "cc" in bug:
         body.append("CC:   " + emails2logins(bug.pop("cc")))
+
     # Extra information
     body.append("")
     if "dup_id" in bug:
@@ -922,6 +939,7 @@ def bug2issue(bug):
         issue["body"] += "\n".join(body) + "\n\n" + \
             "\n".join(issue["comments"])
     issue["assignees"] = [a[1:] for a in issue["assignees"] if a[0] == "@"]
+
     # Get unique labels
     labels_set = set(issue["labels"])
     issue["labels"] = list(labels_set)
