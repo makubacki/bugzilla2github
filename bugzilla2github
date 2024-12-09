@@ -833,6 +833,9 @@ def bug2issue(bug):
     """
     issue = new_issue(bug.pop("bug_id"), False)
 
+    component = bug.pop("component")
+    product = bug.pop("product")
+
     # Convert attachments if any
     attachments = []
     if "attachment" in bug:
@@ -923,8 +926,41 @@ def bug2issue(bug):
     labels_set = set(issue["labels"])
     issue["labels"] = list(labels_set)
 
+    industry_spec = bug.pop("cf_industrystandardspecifications", None)
+    if product == "EDK2" or product == "EDK2 Code First" or product == "Tianocore Feature Requests":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2"
+        if component == "Web Content":
+            issue["org"] = "tianocore-docs"
+            issue["repo"] = "tianocore-docs.github.io"
+    elif product == "EDK2 Platforms":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2=platforms"
+    elif product == "EDK2 Test":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2=test"
+    elif product == "EDK2 Code First" and component == "Reference Implementation":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2"
+    elif product == "EDK2 Code First" and component == "Specification Update":
+        if industry_spec == "UEFI Specification" or industry_spec == "UEFI Shell Specification":
+            issue["org"] = "UEFI"
+            issue["repo"] = "UEFI_spec"
+        if industry_spec == "UEFI Platform Initialization Specification Specification":
+            issue["org"] = "UEFI"
+            issue["repo"] = "PI_Spec"
+        if industry_spec == "ACPI Specification":
+            issue["org"] = "UEFI"
+            issue["repo"] = "ACPI_spec"
+    elif product == "Tianocore Security Issues":
+        logging.critical("Security issues should not be present. "
+                         "A security issue is being skipped.")
+
+    logging.info(f"Bugzilla Bug #{issue['id']} (\"{issue['title']}\") mapped to {issue['org']}/{issue['repo']}")
+
     # Ignore some bug fields
     fields_ignore(bug, BUG_UNUSED_FIELDS)
+
     # Make sure we have converted all the fields
     if bug:
         logging.warning("WARNING: unconverted bug fields:")
