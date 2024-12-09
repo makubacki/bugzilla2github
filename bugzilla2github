@@ -333,10 +333,20 @@ def github_issues_add(issues):
     Args:
         issues: Dictionary of issues converted from Bugzilla export.
     """
+    global GITHUB_OWNER, GITHUB_REPO
+
+    original_gh_owner = GITHUB_OWNER
+    original_gh_repo = GITHUB_REPO
+
     id = 0
     while issues:
         id += 1
         logging.info(f"Checking if GitHub issue #{id} exists...")
+        if id in issues:
+            if not original_gh_owner:
+                GITHUB_OWNER = issues[id]["org"]
+            if not original_gh_repo:
+                GITHUB_REPO = issues[id]["repo"]
         github_issue = github_issue_get(id)
         if github_issue:
             logging.warning(f"\tissue #{id} already exists on GitHub, skipping...")
@@ -348,6 +358,9 @@ def github_issues_add(issues):
             issue = issues.pop(first_id)
             # Note: appending an issue does not guarantee it will become #id
             github_issue_add(id, issue)
+
+    GITHUB_OWNER = original_gh_owner
+    GITHUB_REPO = original_gh_repo
 
 
 def github_issue_get(id):
@@ -644,17 +657,32 @@ def github_labels_create(issues):
     Args:
         issues: A dictionary of converted Bugzilla reports.
     """
-    labels_set = set()
-    for id in issues:
-        for label in issues[id]["labels"]:
-            labels_set.add(label)
+    global GITHUB_OWNER, GITHUB_REPO
 
-    for label in labels_set:
-        if github_get("labels/" + label):
-            logging.debug("\tlabel '%s' exists on GitHub" % label)
-        else:
-            logging.warning("WARNING: label '%s' does not exist on GitHub" % label)
-            github_label_create(label)
+    original_gh_owner = GITHUB_OWNER
+    original_gh_repo = GITHUB_REPO
+
+    labels = {}
+    for issue in issues.values():
+        for label in issues[issue['id']]['labels']:
+            if (issue['org'], issue['repo']) not in labels:
+                labels[(issue['org'], issue['repo'])] = set()
+            labels[(issue['org'], issue['repo'])].add(label)
+
+    for (org, repo), curr_labels in labels.items():
+        for label in curr_labels:
+            if not original_gh_owner:
+                GITHUB_OWNER = org
+            if not original_gh_repo:
+                GITHUB_REPO = repo
+            if github_get("labels/" + label):
+                logging.debug("\tlabel '%s' exists on GitHub" % label)
+            else:
+                logging.warning(f"WARNING: label '{label}' does not exist on GitHub ({GITHUB_OWNER}/{GITHUB_REPO})")
+                github_label_create(label)
+
+    GITHUB_OWNER = original_gh_owner
+    GITHUB_REPO = original_gh_repo
 
 
 def github_assignees_check(issues):
@@ -664,17 +692,32 @@ def github_assignees_check(issues):
     Args:
         issues: A dictionary of converted Bugzilla reports.
     """
-    a_set = set()
-    for id in issues:
-        for assignee in issues[id]["assignees"]:
-            a_set.add(assignee)
+    global GITHUB_OWNER, GITHUB_REPO
 
-    for assignee in a_set:
-        if not github_get("/users/" + assignee):
-            logging.error("Error checking user '%s' on GitHub" % assignee)
-            exit(1)
-        else:
-            logging.debug("\tassignee '%s' exists on GitHub" % assignee)
+    original_gh_owner = GITHUB_OWNER
+    original_gh_repo = GITHUB_REPO
+
+    assignees = {}
+    for issue in issues.values():
+        for assignee in issues[issue['id']]['assignees']:
+            if (issue['org'], issue['repo']) not in assignees:
+                assignees[(issue['org'], issue['repo'])] = set()
+            assignees[(issue['org'], issue['repo'])].add(assignee)
+
+    for (org, repo), curr_assignees in assignees.items():
+        for assignee in curr_assignees:
+            if not original_gh_owner:
+                GITHUB_OWNER = org
+            if not original_gh_repo:
+                GITHUB_REPO = repo
+            if not github_get("/users/" + assignee):
+                logging.error(f"Error checking user '{assignee}' on GitHub ({GITHUB_OWNER}/{GITHUB_REPO})")
+                exit(1)
+            else:
+                logging.debug("\tassignee '%s' exists on GitHub" % assignee)
+
+    GITHUB_OWNER = original_gh_owner
+    GITHUB_REPO = original_gh_repo
 
 
 ########################################################################
@@ -958,8 +1001,6 @@ def bug2issue(bug):
     Returns:
         A new issue dictionary.
     """
-    global GITHUB_OWNER, GITHUB_REPO
-
     issue = new_issue(bug.pop("bug_id"), False)
 
     component = bug.pop("component")
@@ -993,12 +1034,8 @@ def bug2issue(bug):
             issue["repo"] = "ACPI_spec"
     elif product == "Tianocore Security Issues":
         logging.critical("Security issues should not be present. "
-                         "A security issue is being skipped.")
-
-    if not GITHUB_OWNER:
-        GITHUB_OWNER = issue["org"]
-    if not GITHUB_REPO:
-        GITHUB_REPO = issue["repo"]
+                         "The security issue should be removed and skipped.")
+        exit(1)
 
     # Convert short_desc to title
     issue["title"] = ("%s (" % bug.pop("short_desc") + BUG_SIGNATURE
