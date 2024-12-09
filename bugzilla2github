@@ -77,10 +77,10 @@ FORCE_UPDATES = False
 GITHUB_API = "https://api.github.com"
 
 # GitHub repository owner, i.e. username
-GITHUB_OWNER = ""
+GITHUB_OWNER = None
 
 # GitHub repository name
-GITHUB_REPO = ""
+GITHUB_REPO = None
 
 # GitHub access token
 GITHUB_TOKEN = ""
@@ -391,11 +391,6 @@ def github_issue_update(id, issue):
         logging.error("Error updating issue #%d on GitHub:\n%s" % (id, r.text))
         exit(1)
 
-    # [TianocoreUpdate] - Do not leave update coments in existing GH issues
-    # orig_id = issue["id"]
-    # if id != orig_id:
-    #     github_comment_update(orig_id, id)
-
 
 def github_issue_add_stable(id, issue):
     # Note: this still does not guarantee the new issue will be added as #id
@@ -622,38 +617,6 @@ def github_comment_add(orig_id, new_id):
         logging.error("Error adding new comment to issue #%d on GitHub:\n%s"
               % (orig_id, r.text))
         exit(1)
-
-
-def github_comment_update(orig_id, new_id):
-    """
-    Updates a comment on Github #orig_id that Bugzilla Bug is now at #new_id.
-
-    Args:
-        orig_id: Original Bugzilla Bug id.
-        new_id: Newly assigned GitHub Issue #id.
-    """
-    logging.info("\tupdating comment on GitHub issue #%d..." % orig_id)
-    r = github_get("issues/%d/comments" % orig_id)
-    if r:
-        comments = r.json()
-        for comment in comments:
-            bug_id = bug_id_parse(comment["body"])
-            if not bug_id:
-                continue
-            comment_id = int(comment["id"])
-            logging.info("\tupdating comment %d on GitHub issue #%d..."
-                  % (comment_id, orig_id))
-            comment = new_renumber_comment(orig_id, new_id)
-            r = github_post("issues/comments/%d" %
-                            comment_id, comment, ["body"])
-            if not r:
-                logging.error("Error updating comment %d on GitHub issue #%d:\n%s"
-                      % (comment_id, orig_id, r.text))
-                exit(1)
-            return
-    # [TianocoreUpdate] - Do not leave update coments in existing GH issues
-    # print("\tno comment found on #%d, adding a new one..." % orig_id)
-    # github_comment_add(orig_id, new_id)
 
 
 def github_label_create(label):
@@ -995,10 +958,47 @@ def bug2issue(bug):
     Returns:
         A new issue dictionary.
     """
+    global GITHUB_OWNER, GITHUB_REPO
+
     issue = new_issue(bug.pop("bug_id"), False)
 
     component = bug.pop("component")
     product = bug.pop("product")
+
+    industry_spec = bug.pop("cf_industrystandardspecifications", None)
+    if product == "EDK2" or product == "EDK2 Code First" or product == "Tianocore Feature Requests":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2"
+        if component == "Web Content":
+            issue["org"] = "tianocore-docs"
+            issue["repo"] = "tianocore-docs.github.io"
+    elif product == "EDK2 Platforms":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2=platforms"
+    elif product == "EDK2 Test":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2=test"
+    elif product == "EDK2 Code First" and component == "Reference Implementation":
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2"
+    elif product == "EDK2 Code First" and component == "Specification Update":
+        if industry_spec == "UEFI Specification" or industry_spec == "UEFI Shell Specification":
+            issue["org"] = "UEFI"
+            issue["repo"] = "UEFI_spec"
+        if industry_spec == "UEFI Platform Initialization Specification Specification":
+            issue["org"] = "UEFI"
+            issue["repo"] = "PI_Spec"
+        if industry_spec == "ACPI Specification":
+            issue["org"] = "UEFI"
+            issue["repo"] = "ACPI_spec"
+    elif product == "Tianocore Security Issues":
+        logging.critical("Security issues should not be present. "
+                         "A security issue is being skipped.")
+
+    if not GITHUB_OWNER:
+        GITHUB_OWNER = issue["org"]
+    if not GITHUB_REPO:
+        GITHUB_REPO = issue["repo"]
 
     # Convert short_desc to title
     issue["title"] = ("%s (" % bug.pop("short_desc") + BUG_SIGNATURE
@@ -1094,36 +1094,6 @@ def bug2issue(bug):
     # Get unique labels
     labels_set = set(issue["labels"])
     issue["labels"] = list(labels_set)
-
-    industry_spec = bug.pop("cf_industrystandardspecifications", None)
-    if product == "EDK2" or product == "EDK2 Code First" or product == "Tianocore Feature Requests":
-        issue["org"] = "tianocore"
-        issue["repo"] = "edk2"
-        if component == "Web Content":
-            issue["org"] = "tianocore-docs"
-            issue["repo"] = "tianocore-docs.github.io"
-    elif product == "EDK2 Platforms":
-        issue["org"] = "tianocore"
-        issue["repo"] = "edk2=platforms"
-    elif product == "EDK2 Test":
-        issue["org"] = "tianocore"
-        issue["repo"] = "edk2=test"
-    elif product == "EDK2 Code First" and component == "Reference Implementation":
-        issue["org"] = "tianocore"
-        issue["repo"] = "edk2"
-    elif product == "EDK2 Code First" and component == "Specification Update":
-        if industry_spec == "UEFI Specification" or industry_spec == "UEFI Shell Specification":
-            issue["org"] = "UEFI"
-            issue["repo"] = "UEFI_spec"
-        if industry_spec == "UEFI Platform Initialization Specification Specification":
-            issue["org"] = "UEFI"
-            issue["repo"] = "PI_Spec"
-        if industry_spec == "ACPI Specification":
-            issue["org"] = "UEFI"
-            issue["repo"] = "ACPI_spec"
-    elif product == "Tianocore Security Issues":
-        logging.critical("Security issues should not be present. "
-                         "A security issue is being skipped.")
 
     # Convert attachments if any
     attachments = []
@@ -1333,13 +1303,15 @@ def parse_args() -> str:
                         default="export.xml",
                         help="Source XML file.")
     parser.add_argument('-o', '--owner',
-                        required=True,
+                        required=False,
                         type=str,
-                        help="GitHub owner.")
+                        default=None,
+                        help="GitHub owner (overrides owner determined in the script).")
     parser.add_argument('-r', '--repo',
-                        required=True,
+                        required=False,
                         type=str,
-                        help="GitHub repository.")
+                        default=None,
+                        help="GitHub repository (overrides repo determined in the script).")
     parser.add_argument('-t', '--token',
                         required=True,
                         type=str,
