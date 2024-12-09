@@ -1015,10 +1015,10 @@ def bug2issue(bug):
             issue["repo"] = "tianocore-docs.github.io"
     elif product == "EDK2 Platforms":
         issue["org"] = "tianocore"
-        issue["repo"] = "edk2=platforms"
+        issue["repo"] = "edk2-platforms"
     elif product == "EDK2 Test":
         issue["org"] = "tianocore"
-        issue["repo"] = "edk2=test"
+        issue["repo"] = "edk2-test"
     elif product == "EDK2 Code First" and component == "Reference Implementation":
         issue["org"] = "tianocore"
         issue["repo"] = "edk2"
