@@ -60,6 +60,17 @@ NAME = os.path.basename(__file__)
 # Use -b command line argument for GitHub beta import API.
 USE_BETA_API = False
 
+# Count of issues submitted per repo
+GITHUB_REPO_SUBMISSIONS = {}
+
+# Count of issue per data type
+BZ_ISSUE_TYPES = {
+    "assignees": 0,
+    "attachments": 0,
+    "issues": 0,
+    "labels": 0,
+}
+
 # Beta import API application
 GITHUB_BETA_APP = "application/vnd.github.golden-comet-preview+json"
 
@@ -289,10 +300,6 @@ BUG_UNUSED_FIELDS = [
     "attachment.ispatch",
     "attachment.isprivate",
     "cclist_accessible",
-    "cf_documents",
-    "cf_release_observed",
-    "cf_releases_to_fix",
-    "cf_target_os",
     "classification",
     "classification_id",
     "comment_sort_order",
@@ -300,7 +307,6 @@ BUG_UNUSED_FIELDS = [
     "everconfirmed",
     "long_desc.isprivate",
     "op_sys",
-    "product",
     "remaining_time",
     "reporter_accessible",
     "rep_platform",
@@ -333,7 +339,7 @@ def github_issues_add(issues):
     Args:
         issues: Dictionary of issues converted from Bugzilla export.
     """
-    global GITHUB_OWNER, GITHUB_REPO
+    global GITHUB_OWNER, GITHUB_REPO, GITHUB_REPO_SUBMISSIONS
 
     original_gh_owner = GITHUB_OWNER
     original_gh_repo = GITHUB_REPO
@@ -356,8 +362,17 @@ def github_issues_add(issues):
 
             logging.info(f"\tCreating Bugzilla Bug {first_id} as GitHub issue #{id}...")
             issue = issues.pop(first_id)
+            if not original_gh_owner:
+                GITHUB_OWNER = issue["org"]
+            if not original_gh_repo:
+                GITHUB_REPO = issue["repo"]
             # Note: appending an issue does not guarantee it will become #id
             github_issue_add(id, issue)
+
+            if (GITHUB_OWNER, GITHUB_REPO) not in GITHUB_REPO_SUBMISSIONS:
+                GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] = 1
+            else:
+                GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] += 1
 
     GITHUB_OWNER = original_gh_owner
     GITHUB_REPO = original_gh_repo
@@ -917,6 +932,25 @@ def comment2dict(comment, attachments, issue):
         return "\n".join(body)
 
 
+def add_tianocore_custom_fields_to_initial_comment(comment, issue):
+    """
+    Adds custom fields to the initial comment.
+    """
+    body = []
+
+    if issue.get("industry_spec"):
+        body.append(f"- Industry Specification: {issue['industry_spec']}")
+    if issue.get("release_observed"):
+        body.append(f"- Release Observed: {issue['release_observed']}")
+    if issue.get("releases_to_fix"):
+        body.append(f"- Releases to Fix: {issue['releases_to_fix']}")
+    if issue.get("target_os"):
+        body.append(f"- Target OS: {issue['target_os']}")
+
+    if body:
+        comment["thetext"] = "\n".join(body) + "\n\n" + comment["thetext"]
+
+
 def comments2list(comments, attachments, issue):
     """
     Converts Bugzilla comments to a list of
@@ -924,9 +958,13 @@ def comments2list(comments, attachments, issue):
     """
     comments_out = []
     if isinstance(comments, list):
+        if comments:
+            add_tianocore_custom_fields_to_initial_comment(comments[0], issue)
         for comment in comments:
             comments_out.append(comment2dict(comment, attachments, issue))
     else:
+        if comments:
+            add_tianocore_custom_fields_to_initial_comment(comments, issue)
         comments_out.append(comment2dict(comments, attachments, issue))
 
     return comments_out
@@ -985,36 +1023,82 @@ def bug2issue(bug):
 
     component = bug.pop("component")
     product = bug.pop("product")
+    documents = bug.pop("cf_documents", None)
 
-    industry_spec = bug.pop("cf_industrystandardspecifications", None)
+    BZ_ISSUE_TYPES["issues"] += 1
+
+    issue['industry_spec'] = bug.pop("cf_industrystandardspecifications", None)
+    issue['release_observed'] = bug.pop("cf_release_observed", None)
+    issue['releases_to_fix'] = bug.pop("cf_releases_to_fix", None)
+    issue['target_os'] = bug.pop("cf_target_os", None)
+
     if product == "EDK2" or product == "EDK2 Code First" or product == "Tianocore Feature Requests":
         issue["org"] = "tianocore"
         issue["repo"] = "edk2"
         if component == "Web Content":
-            issue["org"] = "tianocore-docs"
-            issue["repo"] = "tianocore-docs.github.io"
+            issue["org"] = "tianocore"
+            issue["repo"] = "tianocore.github.io"
+        if component == "Documentation":
+            if documents == "EDK II Build Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-BuildSpecification"
+            if documents == "EDK II C Coding Standards":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-CCodingStandardsSpecification"
+            if documents == "EDK II DEC Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-DecSpecification"
+            if documents == "EDK II DSC Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-DscSpecification"
+            if documents == "EDK II FDF Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-FdfSpecification"
+            if documents == "EDK II IDF Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-IdfSpecification"
+            if documents == "EDK II INF Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-InfSpecification"
+            if documents == "EDK II Minimum Platform Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-MinimumPlatformSpecification"
+            if documents == "EDK II PCD Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-PcdSpecification"
+            if documents == "EDK II Template Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-TemplateSpecification"
+            if documents == "EDK II UNI Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-UniSpecification"
+            if documents == "EDK II VFR Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-VfrSpecification"
+            if documents == "Other Document":
+                issue["org"] = "tianocore"
+                issue["repo"] = "tianocore.github.io"
+            if documents == "UEFI Driver Writer&apos;s Guide":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-UefiDriverWritersGuide"
+            if documents == "UEFI Module Writer&apos;s Guide":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-ModuleWriteGuide"
+            if documents == "Wiki Pages":
+                issue["org"] = "tianocore"
+                issue["repo"] = "tianocore.github.io"
     elif product == "EDK2 Platforms":
         issue["org"] = "tianocore"
         issue["repo"] = "edk2-platforms"
     elif product == "EDK2 Test":
         issue["org"] = "tianocore"
         issue["repo"] = "edk2-test"
-    elif product == "EDK2 Code First" and component == "Reference Implementation":
-        issue["org"] = "tianocore"
-        issue["repo"] = "edk2"
-    elif product == "EDK2 Code First" and component == "Specification Update":
-        if industry_spec == "UEFI Specification" or industry_spec == "UEFI Shell Specification":
-            issue["org"] = "UEFI"
-            issue["repo"] = "UEFI_spec"
-        if industry_spec == "UEFI Platform Initialization Specification Specification":
-            issue["org"] = "UEFI"
-            issue["repo"] = "PI_Spec"
-        if industry_spec == "ACPI Specification":
-            issue["org"] = "UEFI"
-            issue["repo"] = "ACPI_spec"
     elif product == "Tianocore Security Issues":
         logging.critical("Security issues should not be present. "
                          "The security issue should be removed and skipped.")
+        exit(1)
+    else:
+        logging.warning(f"WARNING: unknown product/component: {product}/{component}")
         exit(1)
 
     # Convert short_desc to title
@@ -1026,6 +1110,9 @@ def bug2issue(bug):
     # Convert assigned_to to assignees
     issue["assignees"].append(
         email2login(bug.pop("assigned_to"), bug.pop("assigned_to.name", None)))
+
+    if len(issue["assignees"]) > 0 and all("unassigned" not in s for s in issue["assignees"]):
+        BZ_ISSUE_TYPES["assignees"] += 1
 
     issue["package"] = bug.pop("cf_package", None)
 
@@ -1115,9 +1202,13 @@ def bug2issue(bug):
     labels_set = set(issue["labels"])
     issue["labels"] = list(labels_set)
 
+    if len(issue["labels"]) > 0:
+        BZ_ISSUE_TYPES["labels"] += 1
+
     # Convert attachments if any
     attachments = []
     if "attachment" in bug:
+        BZ_ISSUE_TYPES["attachments"] += 1
         if isinstance(bug["attachment"], list):
             for attachment in bug["attachment"]:
                 download_attachment(attachment, issue["org"], issue["repo"])
@@ -1396,6 +1487,25 @@ def escape_tags(content):
                   content, flags=re.DOTALL)
 
 
+def print_issue_stat_table():
+    """
+    Prints a table with the issue statistics.
+    """
+    # Print the header
+    print(f"{'Organization':<20} {'Repository':<40} {'Count'}")
+    print(f"{'-' * 20} {'-' * 40} {'-' * 8}")
+
+    # Print each tuple and its count
+    for (org, repo), count in GITHUB_REPO_SUBMISSIONS.items():
+        print(f"{org:<20} {repo:<40} {count}")
+
+    logging.info(
+        f"\n- Total issues: {BZ_ISSUE_TYPES['issues']}\n"
+        f"  - Issues with attachments: {BZ_ISSUE_TYPES['attachments']}\n"
+        f"  - Issues with assignees: {BZ_ISSUE_TYPES['assignees']}\n"
+        f"  - Issues with labels: {BZ_ISSUE_TYPES['labels']}\n")
+
+
 def convert_issues_in_xml(xml_file: Path):
     with open(xml_file, 'r', encoding='utf-8') as file:
         xml_content = file.read()
@@ -1411,6 +1521,10 @@ def convert_issues_in_xml(xml_file: Path):
 
     logging.info("\n===> Posting Bugzilla reports to GitHub Issue Tracker...")
     github_issues_add(issues)
+
+    logging.info("\n===> Repo stats:")
+    print_issue_stat_table()
+
     logging.info("\n===> All done.")
 
 
