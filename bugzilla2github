@@ -344,35 +344,40 @@ def github_issues_add(issues):
     original_gh_owner = GITHUB_OWNER
     original_gh_repo = GITHUB_REPO
 
-    id = 0
-    while issues:
-        id += 1
-        logging.info(f"Checking if GitHub issue #{id} exists...")
-        if id in issues:
-            if not original_gh_owner:
-                GITHUB_OWNER = issues[id]["org"]
-            if not original_gh_repo:
-                GITHUB_REPO = issues[id]["repo"]
-        github_issue = github_issue_get(id)
-        if github_issue:
-            logging.warning(f"\tissue #{id} already exists on GitHub, skipping...")
-            continue
+    # Use safe values buffered from the current issue count in more popular
+    # repos to prevent likelihood of collisions during the conversion process
+    current_repo_issue_id = {
+        ("tianocore", "edk2"): 7000,
+        ("tianocore", "edk2-platforms"): 500,
+        ("tianocore", "edk2-test"): 200,
+    }
+
+    for bz_id in sorted(issues):
+        if not original_gh_owner:
+            GITHUB_OWNER = issues[bz_id]["org"]
+        if not original_gh_repo:
+            GITHUB_REPO = issues[bz_id]["repo"]
+
+        if (issues[bz_id]['org'], issues[bz_id]['repo']) not in current_repo_issue_id:
+            current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] = 0
+
+        while True:
+            current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] += 1
+
+            github_issue = github_issue_get(current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])])
+            if not github_issue:
+                break
+
+        current_issue_id = current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])]
+
+        logging.info(f"\tCreating Bugzilla Bug {bz_id} as GitHub issue #{current_issue_id}...")
+
+        github_issue_add(current_issue_id, issues[bz_id])
+
+        if (GITHUB_OWNER, GITHUB_REPO) not in GITHUB_REPO_SUBMISSIONS:
+            GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] = 1
         else:
-            first_id = sorted(issues)[0]
-
-            logging.info(f"\tCreating Bugzilla Bug {first_id} as GitHub issue #{id}...")
-            issue = issues.pop(first_id)
-            if not original_gh_owner:
-                GITHUB_OWNER = issue["org"]
-            if not original_gh_repo:
-                GITHUB_REPO = issue["repo"]
-            # Note: appending an issue does not guarantee it will become #id
-            github_issue_add(id, issue)
-
-            if (GITHUB_OWNER, GITHUB_REPO) not in GITHUB_REPO_SUBMISSIONS:
-                GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] = 1
-            else:
-                GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] += 1
+            GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] += 1
 
     GITHUB_OWNER = original_gh_owner
     GITHUB_REPO = original_gh_repo
