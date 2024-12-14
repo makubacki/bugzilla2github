@@ -817,7 +817,7 @@ def str2list(map, str):
 
 def package_to_label(*packages):
     """Converts Bugzilla package to a of GitHub label."""
-    return [f"package:{p.strip().lower()}" for p in packages]
+    return [f"package:{p.strip().lower()}" for p in packages if p.strip().lower() != "n/a"]
 
 
 def ids2ids(ids):
