@@ -41,6 +41,7 @@ import requests
 import sys
 import time
 import xml.etree.ElementTree
+import urllib.parse
 from datetime import datetime, timezone
 from six.moves import range
 from pathlib import Path
@@ -896,7 +897,7 @@ def bugzilladate2githubdate(date):
 
 
 def get_attachment_url(org_name, repo_name, attachment_id, attachment_filename):
-    return f"https://github.com/tianocore/user-attachments/raw/refs/heads/main/{org_name}/{repo_name}/BZ-{attachment_id}-{attachment_filename}"
+    return urllib.parse.quote(f"https://github.com/tianocore/user-attachments/raw/refs/heads/main/{org_name}/{repo_name}/BZ-{attachment_id}-{attachment_filename}", safe=':/')
 
 
 def comment2dict(comment, attachments, issue):
