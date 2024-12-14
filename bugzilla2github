@@ -107,6 +107,10 @@ BZ_API_KEY = ""
 UNCONVERTED_LOGINS = set()
 
 # Global conversion dictionaries
+EMAIL2DROP = [
+    "edk2+bugs+int+994+563148131503455288",
+    "edk2+bugs+int"
+]
 EMAIL2LOGIN = {
     "__name__": "email to GitHub login",
     "Aaron Young": "ajyoung-oracle",
@@ -833,9 +837,14 @@ def ids2ids(ids):
 
 def email2login(email, name):
     """Converts email to a GitHub user login string."""
-    issue = str2list(EMAIL2LOGIN, email)
-    if issue:
-        return "@" + issue
+    if email in EMAIL2DROP:
+        return None
+    login = str2list(EMAIL2LOGIN, email)
+    if login:
+        return "@" + login
+    login = str2list(EMAIL2LOGIN, name)
+    if login:
+        return "@" + login
     else:
         if name and not name.find("@") >= 0:
             return "%s &lt;<%s>&gt;" % (name, email)
@@ -845,13 +854,17 @@ def email2login(email, name):
 
 def emails2logins(emails):
     """Converts an email or a list of emails to a string."""
-    issue = []
+    logins = []
     if isinstance(emails, list):
         for email in emails:
-            issue.append(email2login(email, None))
+            resolved_login = email2login(email, None)
+            if resolved_login:
+                logins.append(resolved_login)
     else:
-        issue.append(email2login(emails, None))
-    return ", ".join(issue)
+        resolved_login = email2login(emails, None)
+        if resolved_login:
+            logins.append(resolved_login)
+    return ", ".join(logins)
 
 
 def fields_ignore(obj, fields):
