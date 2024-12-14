@@ -83,6 +83,9 @@ DELETED_BUG_SIGNATURE = "Deleted Bugzilla Bug"
 # Do the actual changes, i.e. post to GitHub
 FORCE_UPDATES = False
 
+# Journal file path (keeps track of BZ IDs successfully converted to GitHub)
+JOURNAL_FILE = None
+
 # GitHub REST API URL
 # See https://developer.github.com/v3/issues/
 GITHUB_API = "https://api.github.com"
@@ -352,32 +355,44 @@ def github_issues_add(issues):
         ("tianocore", "edk2-test"): 200,
     }
 
-    for bz_id in sorted(issues):
-        if not original_gh_owner:
-            GITHUB_OWNER = issues[bz_id]["org"]
-        if not original_gh_repo:
-            GITHUB_REPO = issues[bz_id]["repo"]
+    already_submitted_bzs = []
+    if os.path.exists(JOURNAL_FILE):
+        with open(JOURNAL_FILE, 'r') as journal:
+            already_submitted_bzs = [int(x) for x in journal.read().split(',') if x.strip().isdigit()]
 
-        if (issues[bz_id]['org'], issues[bz_id]['repo']) not in current_repo_issue_id:
-            current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] = 0
+    with open(JOURNAL_FILE, 'a') as journal:
+        for bz_id in sorted(issues):
+            if not original_gh_owner:
+                GITHUB_OWNER = issues[bz_id]["org"]
+            if not original_gh_repo:
+                GITHUB_REPO = issues[bz_id]["repo"]
 
-        while True:
-            current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] += 1
+            if (issues[bz_id]['org'], issues[bz_id]['repo']) not in current_repo_issue_id:
+                current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] = 0
 
-            github_issue = github_issue_get(current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])])
-            if not github_issue:
-                break
+            while True:
+                current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] += 1
 
-        current_issue_id = current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])]
+                github_issue = github_issue_get(current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])])
+                if not github_issue:
+                    break
 
-        logging.info(f"\tCreating Bugzilla Bug {bz_id} as GitHub issue #{current_issue_id}...")
+            current_issue_id = current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])]
 
-        github_issue_add(current_issue_id, issues[bz_id])
+            logging.info(f"\tCreating Bugzilla Bug {bz_id} as GitHub issue #{current_issue_id} in {GITHUB_OWNER}/{GITHUB_REPO}...")
 
-        if (GITHUB_OWNER, GITHUB_REPO) not in GITHUB_REPO_SUBMISSIONS:
-            GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] = 1
-        else:
-            GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] += 1
+            if bz_id not in already_submitted_bzs:
+                github_issue_add(current_issue_id, issues[bz_id])
+                journal.write(f"{bz_id},")
+                journal.flush()
+                os.fsync(journal.fileno())
+            else:
+                current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])] -= 1
+
+            if (GITHUB_OWNER, GITHUB_REPO) not in GITHUB_REPO_SUBMISSIONS:
+                GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] = 1
+            else:
+                GITHUB_REPO_SUBMISSIONS[(GITHUB_OWNER, GITHUB_REPO)] += 1
 
     GITHUB_OWNER = original_gh_owner
     GITHUB_REPO = original_gh_repo
@@ -1393,7 +1408,7 @@ def parse_args() -> str:
     Returns:
         str: The XML file path to parse.
     """
-    global FORCE_UPDATES, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, USE_BETA_API
+    global FORCE_UPDATES, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, JOURNAL_FILE, USE_BETA_API
 
     import argparse
     from argparse import RawTextHelpFormatter
@@ -1428,6 +1443,11 @@ def parse_args() -> str:
                         type=str,
                         default=None,
                         help="GitHub repository (overrides repo determined in the script).")
+    parser.add_argument('-j', '--journal-file',
+                        required=False,
+                        default="bugzilla2github-journal.txt",
+                        type=str,
+                        help="Journal file path.")
     parser.add_argument('-t', '--token',
                         required=True,
                         type=str,
@@ -1459,6 +1479,7 @@ def parse_args() -> str:
     GITHUB_OWNER = args.owner
     GITHUB_REPO = args.repo
     GITHUB_TOKEN = args.token
+    JOURNAL_FILE = args.journal_file
 
     logging.info("===> Converting Bugzilla Bugs to GitHub Issues...")
     logging.info(f"\tSource XML file:          {args.xml}")
@@ -1521,6 +1542,7 @@ def convert_issues_in_xml(xml_file: Path):
 
     logging.info("\n===> Checking if all the labels exist on GitHub...")
     github_labels_create(issues)
+
     logging.info("\n===> Checking if all the assignees exist on GitHub...")
     github_assignees_check(issues)
 
