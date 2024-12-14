@@ -658,7 +658,22 @@ def github_post(url, dict={}, fields=[]):
     logging.debug("DEBUG DATA: " + json.dumps(d))
 
     if FORCE_UPDATES:
-        return requests.post(u, headers=headers, data=data)
+        response = requests.post(u, headers=headers, data=data)
+
+        rate_limit = response.headers.get('X-RateLimit-Limit')
+        rate_limit_remaining = response.headers.get('X-RateLimit-Remaining')
+        rate_limit_reset = response.headers.get('X-RateLimit-Reset')
+        # Only present if rate-limited
+        timeout = response.headers.get('Retry-After')
+
+        logging.info(
+            f"==Current GitHub REST API Limit==\n"
+            f"  Rate Limit: {rate_limit_remaining} / {rate_limit}\n"
+            f"  Rate Limit Reset Time: {datetime.fromtimestamp(int(rate_limit_reset)).strftime('%Y-%m-%d %H:%M:%S')}\n")
+        if timeout:
+            logging.info(f"  In Timeout. Retry After: {timeout} seconds.")
+
+        return response
     else:
         if not github_post.POST_WARNING_PRINTED:
             logging.warning("Skipping POST... (use -f to force updates)")
