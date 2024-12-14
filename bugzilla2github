@@ -99,6 +99,9 @@ GITHUB_REPO = None
 # GitHub access token
 GITHUB_TOKEN = ""
 
+# Bugzilla API key
+BZ_API_KEY = ""
+
 # Bugzilla logins that were not converted to GitHub logins
 UNCONVERTED_LOGINS = set()
 
@@ -997,6 +1000,8 @@ def download_attachment(attachment_info, org, repo):
     Args:
         attachment: A dictionary with attachment information.
     """
+    global BZ_API_KEY
+
     # Save the attachment to a file
     attachment_dir = Path("user-attachments") / org / repo
     attachment_dir.mkdir(parents=True, exist_ok=True)
@@ -1008,7 +1013,7 @@ def download_attachment(attachment_info, org, repo):
         return
 
     bz = bugzilla.Bugzilla("https://bugzilla.tianocore.org/rest",
-                           api_key="APIKEY")
+                           api_key=BZ_API_KEY)
 
     a = bz.get_attachment(attachment_info['attachid'])
     if len(a) == 0:
@@ -1408,7 +1413,7 @@ def parse_args() -> str:
     Returns:
         str: The XML file path to parse.
     """
-    global FORCE_UPDATES, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, JOURNAL_FILE, USE_BETA_API
+    global BZ_API_KEY, FORCE_UPDATES, GITHUB_OWNER, GITHUB_REPO, GITHUB_TOKEN, JOURNAL_FILE, USE_BETA_API
 
     import argparse
     from argparse import RawTextHelpFormatter
@@ -1452,6 +1457,10 @@ def parse_args() -> str:
                         required=True,
                         type=str,
                         help="GitHub access token.")
+    parser.add_argument('-a', '--api-key',
+                        required=True,
+                        type=str,
+                        help="Bugzilla API key.")
 
     args = parser.parse_args()
 
@@ -1480,6 +1489,7 @@ def parse_args() -> str:
     GITHUB_REPO = args.repo
     GITHUB_TOKEN = args.token
     JOURNAL_FILE = args.journal_file
+    BZ_API_KEY = args.api_key
 
     logging.info("===> Converting Bugzilla Bugs to GitHub Issues...")
     logging.info(f"\tSource XML file:          {args.xml}")
