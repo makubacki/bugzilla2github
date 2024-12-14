@@ -331,7 +331,17 @@ ATTACHMENT_UNUSED_FIELDS = [
     "delta_ts",
     "token",
 ]
-
+# Issue data that is stripped before posting to GitHub
+CUSTOM_ISSUE_FIELDS = [
+    "attachments",
+    "industry_spec",
+    "org",
+    "package",
+    "release_observed",
+    "releases_to_fix",
+    "repo",
+    "target_os"
+]
 
 ########################################################################
 ## GitHub API functions
@@ -482,6 +492,10 @@ def github_issue_add_beta(id, issue):
     old_id = issue.pop("id", 0)
     issue_comments = {"issue": issue, "comments": comments}
 
+    state = issue.pop("state", "open")
+    for field in CUSTOM_ISSUE_FIELDS:
+        issue.pop(field, None)
+
     r = github_post("import/issues", issue_comments, ["issue", "comments"])
     if not r:
         logging.error("Error importing a new issue on GitHub:\n%s" % r.text)
@@ -490,6 +504,7 @@ def github_issue_add_beta(id, issue):
     # Convert issue back to stable API
     issue["id"] = old_id
     issue["assignees"] = assignees
+    issue["state"] = state
 
     if FORCE_UPDATES:
         # Wait until the issue is imported
