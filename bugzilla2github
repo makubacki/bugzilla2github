@@ -1032,6 +1032,21 @@ def download_attachment(attachment_info, org, repo):
         f.write(base64.b64decode(a['data']))
 
 
+def get_highest_priority(labels):
+    priority_order = {"priority:low": 1, "priority:medium": 2, "priority:high": 3}
+    highest_priority = ""
+    highest_severity = 0
+
+    for label in labels:
+        stripped_label = label.strip().lower()
+        if stripped_label in priority_order:
+            if priority_order[stripped_label] > highest_severity:
+                if highest_severity != 0:
+                    labels.remove(highest_priority)
+                highest_priority = stripped_label
+                highest_severity = priority_order[stripped_label]
+
+
 def bug2issue(bug):
     """
     Converts all Bugzilla report fields to a new issue dictionary.
@@ -1222,6 +1237,9 @@ def bug2issue(bug):
         issue["body"] += "\n".join(body) + "\n\n" + \
             "\n".join(issue["comments"])
     issue["assignees"] = [a[1:] for a in issue["assignees"] if a[0] == "@"]
+
+    # Keep highest priority assigned to the issue
+    get_highest_priority(issue["labels"])
 
     # Get unique labels
     labels_set = set(issue["labels"])
