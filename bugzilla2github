@@ -365,12 +365,11 @@ def github_issues_add(issues):
     original_gh_owner = GITHUB_OWNER
     original_gh_repo = GITHUB_REPO
 
-    # Use safe values buffered from the current issue count in more popular
-    # repos to prevent likelihood of collisions during the conversion process
+    # Use current issue count in more popular repos to reduce REST API calls.
     current_repo_issue_id = {
-        ("tianocore", "edk2"): 7000,
-        ("tianocore", "edk2-platforms"): 500,
-        ("tianocore", "edk2-test"): 200,
+        ("tianocore", "edk2"): 6542,
+        ("tianocore", "edk2-platforms"): 259,
+        ("tianocore", "edk2-test"): 115,
     }
 
     already_submitted_bzs = []
