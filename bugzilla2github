@@ -43,6 +43,7 @@ import time
 import xml.etree.ElementTree
 import urllib.parse
 from datetime import datetime, timezone
+from pathvalidate import sanitize_filename
 from six.moves import range
 from pathlib import Path
 
@@ -939,7 +940,7 @@ def bugzilladate2githubdate(date):
 
 
 def get_attachment_url(org_name, repo_name, attachment_id, attachment_filename):
-    return urllib.parse.quote(f"https://github.com/tianocore/user-attachments/raw/refs/heads/main/{org_name}/{repo_name}/BZ-{attachment_id}-{attachment_filename}", safe=':/')
+    return urllib.parse.quote(f"https://github.com/tianocore/user-attachments/raw/refs/heads/main/{org_name}/{repo_name}/{attachment_filename}", safe=':/')
 
 
 def comment2dict(comment, attachments, issue):
@@ -1048,7 +1049,9 @@ def download_attachment(attachment_info, org, repo):
     # Save the attachment to a file
     attachment_dir = Path("user-attachments") / org / repo
     attachment_dir.mkdir(parents=True, exist_ok=True)
-    attachment_file = attachment_dir / f"BZ-{attachment_info['attachid']}-{attachment_info['filename']}"
+    attachment_filename = sanitize_filename(f"BZ-{attachment_info['attachid']}-{attachment_info['filename']}")
+    attachment_info['filename'] = attachment_filename
+    attachment_file = attachment_dir / attachment_filename
 
     if attachment_file.exists():
         logging.debug(f"Attachment {attachment_info['attachid']} already exists")
