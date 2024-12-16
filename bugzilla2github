@@ -1177,9 +1177,9 @@ def bug2issue(bug):
         issue["org"] = "tianocore"
         issue["repo"] = "edk2-test"
     elif product == "Tianocore Security Issues":
-        logging.critical("Security issues should not be present. "
-                         "The security issue should be removed and skipped.")
-        exit(1)
+        logging.critical("Security issue present. Verify it is unembargoed.\n")
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2"
     else:
         logging.warning(f"WARNING: unknown product/component: {product}/{component}")
         exit(1)
