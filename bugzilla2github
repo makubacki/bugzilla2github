@@ -1381,7 +1381,7 @@ def new_issue(id, dummy):
         issue["user.login"] = "bugzilla2github"
 
     body.extend([
-        "This issue was created automatically with %s" % NAME,
+        f"This issue was created automatically with [{NAME}](https://github.com/makubacki/bugzilla2github/tree/bz2gh_tianocore)",
         "",
     ])
     if (dummy):
