@@ -1113,12 +1113,19 @@ def bug2issue(bug):
 
     BZ_ISSUE_TYPES["issues"] += 1
 
+    # Convert short_desc to title
+    issue["title"] = ("%s (" % bug.pop("short_desc") + BUG_SIGNATURE
+                      + "%d)" % issue["id"])
+
     issue['industry_spec'] = bug.pop("cf_industrystandardspecifications", None)
     issue['release_observed'] = bug.pop("cf_release_observed", None)
     issue['releases_to_fix'] = bug.pop("cf_releases_to_fix", None)
     issue['target_os'] = bug.pop("cf_target_os", None)
 
-    if product == "EDK2" or product == "EDK2 Code First" or product == "Tianocore Feature Requests":
+    if "edk2-libc" in issue["title"]:
+        issue["org"] = "tianocore"
+        issue["repo"] = "edk2-libc"
+    elif product == "EDK2" or product == "EDK2 Code First" or product == "Tianocore Feature Requests":
         issue["org"] = "tianocore"
         issue["repo"] = "edk2"
         if component == "Web Content":
@@ -1187,9 +1194,6 @@ def bug2issue(bug):
         logging.warning(f"WARNING: unknown product/component: {product}/{component}")
         exit(1)
 
-    # Convert short_desc to title
-    issue["title"] = ("%s (" % bug.pop("short_desc") + BUG_SIGNATURE
-                      + "%d)" % issue["id"])
     # Convert reporter to user login
     user_login = email2login(bug.pop("reporter"),
                              bug.pop("reporter.name", None))
