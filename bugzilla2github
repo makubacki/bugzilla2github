@@ -1131,52 +1131,55 @@ def bug2issue(bug):
             issue["org"] = "tianocore"
             issue["repo"] = "tianocore.github.io"
         if component == "Documentation":
-            if documents == "EDK II Build Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-BuildSpecification"
-            if documents == "EDK II C Coding Standards":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-CCodingStandardsSpecification"
-            if documents == "EDK II DEC Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-DecSpecification"
-            if documents == "EDK II DSC Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-DscSpecification"
-            if documents == "EDK II FDF Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-FdfSpecification"
-            if documents == "EDK II IDF Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-IdfSpecification"
-            if documents == "EDK II INF Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-InfSpecification"
-            if documents == "EDK II Minimum Platform Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-MinimumPlatformSpecification"
-            if documents == "EDK II PCD Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-PcdSpecification"
-            if documents == "EDK II Template Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-TemplateSpecification"
-            if documents == "EDK II UNI Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-UniSpecification"
-            if documents == "EDK II VFR Specification":
-                issue["org"] = "tianocore-docs"
-                issue["repo"] = "edk2-VfrSpecification"
-            if documents == "Other Document":
+            if isinstance(documents, list) and len(documents) > 1:
                 issue["org"] = "tianocore"
                 issue["repo"] = "tianocore.github.io"
-            if documents == "UEFI Driver Writer&apos;s Guide":
+            elif documents == "EDK II Build Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-BuildSpecification"
+            elif documents == "EDK II C Coding Standards":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-CCodingStandardsSpecification"
+            elif documents == "EDK II DEC Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-DecSpecification"
+            elif documents == "EDK II DSC Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-DscSpecification"
+            elif documents == "EDK II FDF Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-FdfSpecification"
+            elif documents == "EDK II IDF Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-IdfSpecification"
+            elif documents == "EDK II INF Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-InfSpecification"
+            elif documents == "EDK II Minimum Platform Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-MinimumPlatformSpecification"
+            elif documents == "EDK II PCD Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-PcdSpecification"
+            elif documents == "EDK II Template Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-TemplateSpecification"
+            elif documents == "EDK II UNI Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-UniSpecification"
+            elif documents == "EDK II VFR Specification":
+                issue["org"] = "tianocore-docs"
+                issue["repo"] = "edk2-VfrSpecification"
+            elif documents == "Other Document":
+                issue["org"] = "tianocore"
+                issue["repo"] = "tianocore.github.io"
+            elif documents == "UEFI Driver Writer&apos;s Guide":
                 issue["org"] = "tianocore-docs"
                 issue["repo"] = "edk2-UefiDriverWritersGuide"
-            if documents == "UEFI Module Writer&apos;s Guide":
+            elif documents == "UEFI Module Writer&apos;s Guide":
                 issue["org"] = "tianocore-docs"
                 issue["repo"] = "edk2-ModuleWriteGuide"
-            if documents == "Wiki Pages":
+            elif documents == "Wiki Pages":
                 issue["org"] = "tianocore"
                 issue["repo"] = "tianocore.github.io"
     elif product == "EDK2 Platforms":
