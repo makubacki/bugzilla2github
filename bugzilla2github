@@ -345,7 +345,8 @@ CUSTOM_ISSUE_FIELDS = [
     "release_observed",
     "releases_to_fix",
     "repo",
-    "target_os"
+    "target_os",
+    "to_assignees"
 ]
 
 ########################################################################
@@ -1200,10 +1201,11 @@ def bug2issue(bug):
     user_login = email2login(bug.pop("reporter"),
                              bug.pop("reporter.name", None))
     # Convert assigned_to to assignees
-    issue["assignees"].append(
+    issue["to_assignees"] = []
+    issue["to_assignees"].append(
         email2login(bug.pop("assigned_to"), bug.pop("assigned_to.name", None)))
 
-    if len(issue["assignees"]) > 0 and all("unassigned" not in s for s in issue["assignees"]):
+    if len(issue["to_assignees"]) > 0 and all("unassigned" not in s for s in issue["to_assignees"]):
         BZ_ISSUE_TYPES["assignees"] += 1
 
     issue["package"] = bug.pop("cf_package", None)
@@ -1260,7 +1262,7 @@ def bug2issue(bug):
         "# " + BUG_SIGNATURE + "%d" % issue["id"],
         "Date: " + issue["created_at"],
         "From: " + user_login,
-        "To:   " + ", ".join(issue["assignees"]),
+        "To:   " + ", ".join(issue["to_assignees"]),
     ])
     if "cc" in bug:
         body.append("CC:   " + emails2logins(bug.pop("cc")))
