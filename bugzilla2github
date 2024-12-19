@@ -397,9 +397,8 @@ def github_issues_add(issues):
 
             current_issue_id = current_repo_issue_id[(issues[bz_id]['org'], issues[bz_id]['repo'])]
 
-            logging.info(f"\tCreating Bugzilla Bug {bz_id} as GitHub issue #{current_issue_id} in {GITHUB_OWNER}/{GITHUB_REPO}...")
-
             if bz_id not in already_submitted_bzs:
+                logging.info(f"\tCreating Bugzilla Bug {bz_id} as GitHub issue #{current_issue_id} in {GITHUB_OWNER}/{GITHUB_REPO}...")
                 github_issue_add(current_issue_id, issues[bz_id])
                 journal.write(f"{bz_id},")
                 journal.flush()
