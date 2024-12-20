@@ -1022,6 +1022,8 @@ def add_tianocore_custom_fields_to_initial_comment(comment, issue):
         body.append(f"- Releases to Fix: {issue['releases_to_fix']}")
     if issue.get("target_os"):
         body.append(f"- Target OS: {issue['target_os']}")
+    if issue.get("to_assignees"):
+        body.append(f"- Bugzilla Assignee(s): {', '.join(issue['to_assignees'])}")
 
     if body:
         comment["thetext"] = "\n".join(body) + "\n\n" + comment["thetext"]
