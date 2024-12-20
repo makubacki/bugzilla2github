@@ -7,6 +7,21 @@ https://developer.github.com/v3/issues/
 Converts Bugzilla emails to Github accounts, statuses to states,
 Bugzilla components, priorities, severities, resolutions to GitHub labels.
 
+---
+
+Tianocore Fork Note
+-------------------
+The version on this branch is a fork of the original bugzilla2github customized
+for the [tianocore](https://www.tianocore.org/) organization.
+
+Details about the execution of the script and high-level changes made in the
+fork are described in [Bugzilla to GitHub Summary](https://github.com/tianocore/edk2/discussions/6544).
+
+Since this script is not expected to be run again for the Tianocore organization,
+the remainder of this README is the original README from the upstream repository.
+
+---
+
 Latest updates:
 
 * 2018-12-22 -- added support for GitHub beta import API
