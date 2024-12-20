@@ -369,11 +369,18 @@ def github_issues_add(issues):
 
     # Use current issue count in more popular repos to reduce REST API calls.
     current_repo_issue_id = {
-        ("tianocore", "edk2"): 6557,
-        ("tianocore", "edk2-platforms"): 260,
-        ("tianocore", "edk2-test"): 115,
-        ("tianocore", "edk2-libc"): 21,
-        ("tianocore", "tianocore.github.io"): 21,
+        ("tianocore", "edk2"): 9550,
+        ("tianocore", "edk2-platforms"): 550,
+        ("tianocore", "edk2-test"): 117,
+        ("tianocore", "edk2-libc"): 23,
+        ("tianocore", "tianocore.github.io"): 60,
+        ("tianocore-docs", "edk2-FdfSpecification"): 14,
+        ("tianocore-docs", "edk2-DscSpecification"): 7,
+        ("tianocore-docs", "edk2-CCodingStandardsSpecification"): 18,
+        ("tianocore-docs", "edk2-InfSpecification"): 11,
+        ("tianocore-docs", "edk2-DecSpecification"): 4,
+        ("tianocore-docs", "edk2-BuildSpecification"): 23,
+        ("tianocore-docs", "edk2-UniSpecification"): 4,
     }
 
     already_submitted_bzs = []
